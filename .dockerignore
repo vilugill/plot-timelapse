@@ -1,0 +1,13 @@
+.git
+.github
+.gitignore
+.DS_Store
+setup.ps1
+start_server.ps1
+README.md
+*.md
+*.ps1
+*.log
+.vscode/
+.idea/
+node_modules/
