@@ -1,92 +1,70 @@
-﻿# Daily Photo Gallery
+# Plot Timelapse
 
-A simple responsive website that displays daily photos in a gallery format. This application is designed to run on a Raspberry Pi 4B using Docker but can also be tested locally.
+The house-build timelapse behind [vilugill.com](https://vilugill.com) — a daily
+photo of the plot, with a scrubbable timeline going back to the first day.
 
-## Features
+Vanilla HTML/CSS/JS, no framework, no build step.
 
-- Displays the latest photo prominently on the homepage
-- Gallery view for browsing through all previous photos
-- Automatic detection of new photos (based on YYYY-MM-DD filename format)
-- Responsive design for all screen sizes
-- Lightweight implementation using vanilla JavaScript (no frameworks)
-
-## Quick Start
-
-### Testing Locally
-
-1. Run the included start script:
-
-```powershell
-.\start_server.ps1
+```
+src/        the website
+pipeline/   the job that publishes photos to Cloudflare R2 (see pipeline/README.md)
 ```
 
-This will start a local web server and open the gallery in your browser.
+## How it works
 
-### Building and Deploying to Raspberry Pi
+A camera on a Raspberry Pi takes one photo a day. The Pi publishes it to a
+Cloudflare R2 bucket at three sizes and rewrites `photos.json`, the index the
+site reads. The site itself is static and hosted on Cloudflare Pages, so nothing
+on the home network is in the path when someone visits.
 
-#### Easy Method (Recommended)
+Syncthing still mirrors the originals to unraid — that remains the archive.
 
-1. Run the Docker build script:
-
-```powershell
-.\docker-build.ps1
-```
-
-This script will:
-- Check for Docker and Docker BuildX
-- Build for multiple architectures (amd64 and arm/v7)
-- Optionally push to Docker Hub
-- Provide commands for deployment
-
-#### Manual Method
-
-1. Set up Docker BuildX:
-
-```powershell
-docker buildx create --name mybuilder --use
-```
-
-2. Build the Docker image for ARM architecture:
-
-```powershell
-docker buildx build --platform linux/arm/v7 -t yourusername/photo-gallery:latest --push .
-```
-
-3. On your Raspberry Pi, pull and run the image:
+## Local development
 
 ```bash
-docker pull yourusername/photo-gallery:latest
-docker run -d -p 80:80 -v /path/to/photos:/usr/share/nginx/html/photos yourusername/photo-gallery:latest
+cd src && python -m http.server 8899
 ```
 
-## Photo Requirements
+The site then loads photos from the live R2 bucket, which needs
+`http://localhost:8899` in the bucket's CORS policy (see `pipeline/README.md`).
+To work fully offline, drop some `YYYY-MM-DD` photos in a folder, generate the
+tiers locally, and set `PHOTO_BASE` in `src/script.js` to `''`.
 
-- Photos should be named with the format: `YYYY-MM-DD-description.jpg` (e.g., `2025-06-20-sunset.jpg`)
-- Supported formats: JPG, JPEG, PNG
-- Photos will be automatically sorted by date (newest first)
+## Deploying the site
 
-## Directory Structure
-
-```
-photo-gallery/
-â”œâ”€â”€ src/               # Web application files
-â”‚   â”œâ”€â”€ index.html     # Main HTML file
-â”‚   â”œâ”€â”€ styles.css     # CSS styles
-â”‚   â”œâ”€â”€ script.js      # JavaScript code
-â”‚   â””â”€â”€ photos/        # Directory for photos
-â”‚       â””â”€â”€ YYYY-MM-DD-*.jpg
-â”œâ”€â”€ Dockerfile         # Docker configuration
-â”œâ”€â”€ start_server.ps1   # Script to start local server
-â””â”€â”€ README.md          # This documentation
+```bash
+npx wrangler pages deploy src --project-name vilugill
 ```
 
-## Customization
+Use Oli's personal Cloudflare account, not the one Korvi lives on — check with
+`npx wrangler whoami` first.
 
-- Edit `src/styles.css` to change the appearance
-- Modify `src/index.html` to add additional content
-- Update `src/script.js` to change behavior or add features
+The first deploy creates the project; afterwards, point `vilugill.com` at it
+under **Workers & Pages → vilugill → Custom domains**.
 
-## Troubleshooting
+## Configuration
 
-- If no photos appear, check that your photos are correctly named with the YYYY-MM-DD format
-- For permission issues on Raspberry Pi: `chmod -R 755 /path/to/photos`
+Everything tunable is at the top of `src/script.js`:
+
+| Constant | Purpose |
+|---|---|
+| `PHOTO_BASE` | Where the photos are served from |
+| `DEFAULT_TIERS` | Fallback tier layout if `photos.json` doesn't declare one |
+| `WEB_PREFETCH_WINDOW` | How many photos either side of the current one to fetch sharp |
+| `PRELOAD_CONCURRENCY` | Thumbnails downloaded at once during the initial preload |
+
+## Photo requirements
+
+Named with a leading date: `2026-08-14.jpg`, `2026-08-14-10.jpg` and
+`2026-08-14-n.jpg` are all fine. JPG or PNG. One per day.
+
+## Legacy
+
+`Dockerfile`, `nginx.conf` and `docker-compose.yml` are the old self-hosted
+setup, where nginx served both the site and the photos from unraid and the app
+discovered photos by parsing nginx's autoindex HTML. Kept as a fallback; the
+live site no longer uses them.
+
+`setup.sh` used to generate the whole app from scratch, but it only ever
+generated the original v1.0 UI — running it would have overwritten the real site.
+Removed in the R2 migration; recoverable from commit `4869201` if ever needed.

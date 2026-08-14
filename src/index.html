@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+<meta id="viewport-meta" name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Plot Timelapse</title>
+    
+    <!-- Favicons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+    <link rel="icon" type="image/svg+xml" href="house-favicon.svg">
+    <link rel="manifest" href="site.webmanifest">
+    <meta name="theme-color" content="#bd93f9">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <ul>
+                <li><a href="#" class="active" id="latest-tab"><span id="latest-tab-text">Latest</span></a></li>
+                <li><a href="#" id="gallery-tab">Timelapse</a></li>
+                <li><a href="https://www.youtube.com/playlist?list=PL1CuuM9TY2jTUUnVdAA5k_2-2xdJJy5Kc" target="_blank" rel="noopener">Build Diary</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <!-- Latest Photo View -->
+        <section id="latest-view" class="active">
+            <div class="photo-container">
+                <img id="latest-photo" src="" alt="Latest photo" class="clickable">
+                <div class="photo-info">
+                    <h2 id="latest-date">Loading...</h2>
+                    <p id="refresh-time"></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Gallery View -->
+        <section id="gallery-view">
+            <div class="photo-container">
+                <img id="gallery-photo" src="" alt="Gallery photo" class="clickable">
+                <!-- Doughnut progress indicator -->
+                <div id="loading-doughnut" class="loading-doughnut hidden">
+                    <svg viewBox="0 0 36 36">
+                        <path class="progress-track"
+                            d="M18 2.0845
+                                a 15.9155 15.9155 0 0 1 0 31.831
+                                a 15.9155 15.9155 0 0 1 0 -31.831"
+                            fill="none" stroke-width="2"/>
+                        <path class="progress-indicator"
+                            d="M18 2.0845
+                                a 15.9155 15.9155 0 0 1 0 31.831
+                                a 15.9155 15.9155 0 0 1 0 -31.831"
+                            fill="none" stroke-width="2"/>
+                    </svg>
+                    <span class="progress-text">0%</span>
+                </div>
+                <div class="photo-info">
+                    <h2 id="gallery-date">Select a photo</h2>
+                    <input type="range" id="gallery-slider" min="0" max="100" value="0" class="slider">
+                    <div class="gallery-controls">
+                        <button id="first-photo" disabled class="nav-button">First</button>
+                        <button id="prev-photo" disabled class="nav-button">Previous Day</button>
+                        <button id="next-photo" disabled class="nav-button">Next Day</button>
+                        <button id="latest-button" disabled class="nav-button">Latest</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Maximized Photo Overlay -->
+    <div id="maximize-overlay" class="hidden">
+        <button id="close-maximize" class="close-button">&times;</button>
+        <img id="maximized-photo" src="" alt="Maximized photo">
+    </div>
+
+    <script src="script.js"></script>
+    <div id="version-footer" onclick="window.location.href='changelog.html'">v1.2.0</div>
+</body>
+</html>

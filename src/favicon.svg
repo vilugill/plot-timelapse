@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <!-- Purple mountain favicon for Plot Timelapse - simplified -->
+  <!-- Dark background square (base) -->
+  <rect fill="#6c5d8f" x="0" y="16" width="32" height="16" />
+  
+  <!-- Medium purple square (left side) -->
+  <rect fill="#9580c7" x="0" y="0" width="16" height="16" />
+  
+  <!-- Light purple triangle (mountain) -->
+  <path fill="#bd93f9" d="M16 0L32 16L0 16Z" />
+</svg>

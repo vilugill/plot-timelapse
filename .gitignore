@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+
+# Local photo archive, never committed
+src/photos/

@@ -1,0 +1,29 @@
+{
+  "name": "Plot Timelapse",
+  "short_name": "Timelapse",
+  "description": "View daily timelapse photos of your garden or construction project",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#282a36",
+  "theme_color": "#bd93f9",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "favicon.ico",
+      "sizes": "16x16 32x32",
+      "type": "image/x-icon",
+      "purpose": "any"
+    },
+    {
+      "src": "apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
