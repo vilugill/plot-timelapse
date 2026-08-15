@@ -102,9 +102,23 @@ real bucket.
 
 ### 6. Create an API token for the Pi
 
-**R2 → API → Manage API tokens → Create token**, scoped to
-**Object Read & Write** on `vilugill-photos` only. Keep the Access Key ID and
-Secret — the secret is shown once.
+**R2 Object Storage → Account Details → Manage** (next to API Tokens) →
+**Create Account API token**.
+
+Account, not user: a user token inherits your personal permissions and goes
+inactive if your user is removed from the account, which is the wrong failure
+mode for an unattended job. Account tokens are the ones meant for services.
+Creating one requires the Super Administrator role.
+
+Scope it to **Object Read & Write** on `vilugill-photos` only.
+
+Keep the **Access Key ID** and **Secret Access Key** — the secret is shown once.
+Those are the S3 credentials; ignore the separate "Token value" on the same
+screen, which is for Cloudflare's own REST API and won't authenticate here.
+
+Note that R2 has to be enabled on the account before it will issue a token, and
+enabling it asks for a payment method even though this all sits inside the free
+tier.
 
 ---
 
