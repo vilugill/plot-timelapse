@@ -18,6 +18,7 @@ import json
 import os
 import re
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
@@ -72,6 +73,9 @@ def parse_args():
                         help="Report what would be uploaded, change nothing")
     parser.add_argument("--force", action="store_true",
                         help="Re-generate and re-upload even if already present")
+    parser.add_argument("--interval", type=int, default=int(os.environ.get("SYNC_INTERVAL", "0")),
+                        help="Keep running and sync every N seconds instead of exiting "
+                             "(0, the default, runs once). Also settable as SYNC_INTERVAL")
     return parser.parse_args()
 
 
@@ -196,22 +200,14 @@ def write_manifest(client, bucket, dates, dry_run):
     return len(body)
 
 
-def main():
-    args = parse_args()
-
-    if not args.photo_dir.is_dir():
-        sys.exit(f"Photo directory not found: {args.photo_dir}")
-
-    client = make_client()
-
+def run_once(args, client):
+    """One pass. Returns the number of photos that failed."""
     local = find_local_photos(args.photo_dir)
     if not local:
-        sys.exit(f"No date-named photos found in {args.photo_dir}")
+        print(f"No date-named photos found in {args.photo_dir}", file=sys.stderr)
+        return 0
 
-    try:
-        published = set() if args.force else list_published_dates(client, args.bucket)
-    except ClientError as error:
-        sys.exit(f"Could not read the bucket: {error}")
+    published = set() if args.force else list_published_dates(client, args.bucket)
 
     pending = sorted(set(local) - published)
     if args.limit:
@@ -224,7 +220,7 @@ def main():
         # every image is present
         size = write_manifest(client, args.bucket, sorted(local), args.dry_run)
         print(f"Manifest refreshed ({size} bytes, {len(local)} dates)")
-        return
+        return 0
 
     total_bytes = 0
     failures = []
@@ -254,10 +250,45 @@ def main():
     print(f"{prefix}Manifest now lists {len(manifest_dates)} dates ({size} bytes)")
 
     if failures:
-        print(f"\n{len(failures)} photo(s) failed:", file=sys.stderr)
+        print(f"{len(failures)} photo(s) failed:", file=sys.stderr)
         for date, error in failures:
             print(f"  {date}: {error}", file=sys.stderr)
-        sys.exit(1)
+
+    return len(failures)
+
+
+def main():
+    args = parse_args()
+
+    if not args.photo_dir.is_dir():
+        sys.exit(f"Photo directory not found: {args.photo_dir}")
+
+    client = make_client()
+
+    # One-shot: the original behaviour, and what the backfill and --dry-run use
+    if not args.interval:
+        try:
+            sys.exit(1 if run_once(args, client) else 0)
+        except ClientError as error:
+            sys.exit(f"Could not read the bucket: {error}")
+
+    # Long-running: schedule ourselves so this can be an ordinary always-on
+    # container rather than something cron has to poke
+    print(f"Watching {args.photo_dir}, syncing every {args.interval}s")
+    while True:
+        started = datetime.now(timezone.utc)
+        print(f"--- {started.strftime('%Y-%m-%d %H:%M:%S')} UTC")
+
+        try:
+            run_once(args, client)
+        except Exception as error:
+            # A failed pass must never kill the loop; the next one retries, and
+            # the work is idempotent so nothing is lost by trying again
+            print(f"Sync failed, will retry next cycle: {error}", file=sys.stderr)
+
+        sys.stdout.flush()
+        sys.stderr.flush()
+        time.sleep(args.interval)
 
 
 if __name__ == "__main__":

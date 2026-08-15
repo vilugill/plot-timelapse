@@ -140,15 +140,35 @@ R2_SECRET_ACCESS_KEY=<secret>
 R2_BUCKET=vilugill-photos
 ```
 
-Build the image on the Pi:
+### Getting the image
 
-```bash
-git clone https://github.com/olig89/plot-timelapse.git ~/vilugill/plot-timelapse
+GitHub Actions builds it for amd64 and arm64 on every change to `pipeline/`, so
+the Pi can pull rather than build:
+
+```
+ghcr.io/vilugill/plot-timelapse-sync:latest
 ```
 
+The package inherits the repository's visibility, so while the repo is private
+the Pi needs to authenticate once with a personal access token that has
+`read:packages`:
+
 ```bash
-docker build -t vilugill-sync ~/vilugill/plot-timelapse/pipeline
+echo <token> | docker login ghcr.io -u <github-username> --password-stdin
 ```
+
+Alternatively make just the package public (Packages → plot-timelapse-sync →
+Package settings → Change visibility) and skip the login — the image holds only
+the script and its dependencies, never credentials.
+
+To build it locally instead:
+
+```bash
+docker build -t ghcr.io/vilugill/plot-timelapse-sync:latest ./pipeline
+```
+
+Note that 32-bit Raspberry Pi OS is not supported: Pillow publishes no armv7
+wheels, so the build would try to compile it from source.
 
 ### Check it before it writes anything
 
@@ -174,20 +194,27 @@ letting the rest run overnight. If the Pi doesn't hold the full history, run the
 same job anywhere that does — it only needs the photo directory and the env
 file.
 
-### Hourly run
+### Running it continuously
 
-```bash
-crontab -e
-```
+Set `SYNC_INTERVAL` and the job schedules itself instead of exiting, which makes
+it an ordinary always-on container — no crontab, and the logs land wherever your
+Docker setup already shows them. `docker-compose.yml` here is ready to paste
+into Dockge as a stack; point the volume at your photo directory and put the
+four R2 values in a `.env` beside it.
+
+The first run does the whole backfill and later ones pick up each new day, so
+deploying the stack is all that's needed — though it's still worth doing a
+`--dry-run` and a `--limit 5` by hand first.
+
+A pass with nothing to do costs three list requests and rewrites the index; the
+free tier allows a million such operations a month, so hourly is comfortable.
+
+If you'd rather use cron, leave `SYNC_INTERVAL` unset and the container runs
+once and exits:
 
 ```cron
-# Publish new house photos to R2. Hourly rather than daily so a late or missed
-# capture still gets picked up the same day.
-17 * * * * /usr/bin/docker run --rm --env-file $HOME/vilugill/r2.env -v /path/to/photos:/photos:ro vilugill-sync >> $HOME/vilugill/sync.log 2>&1
+17 * * * * /usr/bin/docker run --rm --env-file $HOME/vilugill/r2.env -v /path/to/photos:/photos:ro ghcr.io/vilugill/plot-timelapse-sync:latest >> $HOME/vilugill/sync.log 2>&1
 ```
-
-A run with nothing to do costs three list requests and rewrites the index; the
-free tier allows a million such operations a month.
 
 ### Without Docker
 

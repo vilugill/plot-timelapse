@@ -1,0 +1,34 @@
+# Photo sync stack for Dockge.
+#
+# The container schedules itself (SYNC_INTERVAL), so this is an ordinary
+# always-on service with its logs in the Dockge UI - no crontab needed.
+#
+# Before starting:
+#   1. Put the four R2 values in a .env file beside this one
+#   2. Change the photo path below to wherever the capture photos actually live
+#
+# The first run does the whole backfill, then it just picks up each new day.
+
+services:
+  vilugill-sync:
+    image: ghcr.io/vilugill/plot-timelapse-sync:latest
+    container_name: vilugill-sync
+    restart: unless-stopped
+
+    # R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET
+    env_file: .env
+
+    environment:
+      # Hourly, so a late or missed capture is still picked up the same day
+      SYNC_INTERVAL: 3600
+
+    volumes:
+      # Left side: where the photos are on the Pi. Read-only: this job never
+      # modifies your originals.
+      - /path/to/photos:/photos:ro
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
