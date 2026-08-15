@@ -124,14 +124,17 @@ tier.
 
 ## Pi setup (Docker)
 
-Credentials live in one file, readable only by its owner:
+Credentials live in one file: the `.env` beside the compose file, which is also
+what the manual commands below point at, so there's only ever one copy. Under
+Dockge that's `/opt/stacks/vilugill-sync/.env` and its built-in editor writes it.
+Creating it by hand, keep it readable only by its owner:
 
 ```bash
-mkdir -p ~/vilugill && install -m 600 /dev/null ~/vilugill/r2.env
+install -m 600 /dev/null /opt/stacks/vilugill-sync/.env
 ```
 
-`~/vilugill/r2.env` — plain `KEY=value` lines, no quotes and no `export`,
-because Docker's `--env-file` takes the text literally:
+Plain `KEY=value` lines, no quotes and no `export`, because Docker's
+`--env-file` takes the text literally:
 
 ```
 R2_ACCOUNT_ID=<personal-account-id>
@@ -149,17 +152,29 @@ the Pi can pull rather than build:
 ghcr.io/vilugill/plot-timelapse-sync:latest
 ```
 
-The package inherits the repository's visibility, so while the repo is private
-the Pi needs to authenticate once with a personal access token that has
-`read:packages`:
+The package inherits the repository's visibility, so it starts out private —
+**make the package itself public** and pulling needs no credentials at all:
+`github.com/orgs/vilugill/packages/container/plot-timelapse-sync/settings` →
+Danger Zone → Change visibility.
+
+The repository stays private; package visibility is separate. Nothing sensitive
+is in the image — just this script and its two dependencies. R2 credentials
+arrive at runtime from the environment and are never baked in.
+
+Keeping the package private costs more than it sounds like it should. A
+`docker login` writes the token to `~/.docker/config.json` for the user that ran
+it, and a container-based manager like Dockge runs compose inside its own
+filesystem, so it never sees that login and the pull fails with `unauthorized`.
+Working around it means either mounting the host's `config.json` into the
+manager or logging in inside it — both of which have to be redone whenever that
+container is recreated.
+
+If you do want it private, authenticate wherever compose actually runs, with a
+token that has `read:packages`:
 
 ```bash
 echo <token> | docker login ghcr.io -u <github-username> --password-stdin
 ```
-
-Alternatively make just the package public (Packages → plot-timelapse-sync →
-Package settings → Change visibility) and skip the login — the image holds only
-the script and its dependencies, never credentials.
 
 To build it locally instead:
 
@@ -173,7 +188,7 @@ wheels, so the build would try to compile it from source.
 ### Check it before it writes anything
 
 ```bash
-docker run --rm --env-file ~/vilugill/r2.env -v /path/to/photos:/photos:ro vilugill-sync --dry-run
+docker run --rm --env-file .env -v /path/to/photos:/photos:ro ghcr.io/vilugill/plot-timelapse-sync:latest --dry-run
 ```
 
 That reports what it would upload and touches nothing.
@@ -185,7 +200,7 @@ it's resumable — if it dies, run it again and it picks up whatever is still
 missing.
 
 ```bash
-docker run --rm --env-file ~/vilugill/r2.env -v /path/to/photos:/photos:ro vilugill-sync
+docker run --rm --env-file .env -v /path/to/photos:/photos:ro ghcr.io/vilugill/plot-timelapse-sync:latest
 ```
 
 Expect roughly 650 MB of upload and, on a Pi 4, a while for the resizing. Worth
@@ -213,7 +228,7 @@ If you'd rather use cron, leave `SYNC_INTERVAL` unset and the container runs
 once and exits:
 
 ```cron
-17 * * * * /usr/bin/docker run --rm --env-file $HOME/vilugill/r2.env -v /path/to/photos:/photos:ro ghcr.io/vilugill/plot-timelapse-sync:latest >> $HOME/vilugill/sync.log 2>&1
+17 * * * * /usr/bin/docker run --rm --env-file /opt/stacks/vilugill-sync/.env -v /path/to/photos:/photos:ro ghcr.io/vilugill/plot-timelapse-sync:latest >> /var/log/vilugill-sync.log 2>&1
 ```
 
 ### Without Docker
@@ -227,7 +242,7 @@ sudo apt install -y python3-pil python3-boto3
 Then `sync_to_r2.py` directly, sourcing the same file:
 
 ```bash
-set -a; . ~/vilugill/r2.env; set +a; ./sync_to_r2.py --photo-dir /path/to/photos --dry-run
+set -a; . /opt/stacks/vilugill-sync/.env; set +a; ./sync_to_r2.py --photo-dir /path/to/photos --dry-run
 ```
 
 ---
