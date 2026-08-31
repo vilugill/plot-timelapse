@@ -217,9 +217,14 @@ def run_once(args, client):
 
     if not pending:
         # Still refresh the manifest: it may be missing or out of date even when
-        # every image is present
-        size = write_manifest(client, args.bucket, sorted(local), args.dry_run)
-        print(f"Manifest refreshed ({size} bytes, {len(local)} dates)")
+        # every image is present. Union with `published` rather than using
+        # `local` alone - the bucket can hold dates that never touched this
+        # machine's disk (e.g. a manual upload from elsewhere), and using
+        # `local` alone would silently drop them from the index on the very
+        # next clean pass.
+        manifest_dates = sorted(published | set(local))
+        size = write_manifest(client, args.bucket, manifest_dates, args.dry_run)
+        print(f"Manifest refreshed ({size} bytes, {len(manifest_dates)} dates)")
         return 0
 
     total_bytes = 0
